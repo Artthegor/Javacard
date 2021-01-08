@@ -10,6 +10,10 @@ Application cliente Javacard
 6 - Quitter
 
 Votre choix ?
+
+Veuillez saisir le code PIN (un chiffre à la fois): 
+
+Veuillez saisir le montant de votre recharge entre 1 et 10: 
 Opération de rechargement validée.
 
 Application cliente Javacard
@@ -23,20 +27,11 @@ Application cliente Javacard
 6 - Quitter
 
 Votre choix ?
-Valeur du compteur : 5
 
-Application cliente Javacard
-----------------------------
+Veuillez saisir le code PIN (un chiffre à la fois): 
 
-1 - Recharger le compteur
-2 - Decrementer le compteur
-3 - Interroger le compteur
-4 - Deblocage PIN
-5 - Controle
-6 - Quitter
-
-Votre choix ?
-Bon voyage !
+Veuillez saisir le montant de votre recharge entre 1 et 10: 
+Erreur : Inconnue. Impossible d'effectuer un rechargement.
 
 Application cliente Javacard
 ----------------------------
@@ -50,32 +45,6 @@ Application cliente Javacard
 
 Votre choix ?
 Valeur du compteur : 4
-
-Application cliente Javacard
-----------------------------
-
-1 - Recharger le compteur
-2 - Decrementer le compteur
-3 - Interroger le compteur
-4 - Deblocage PIN
-5 - Controle
-6 - Quitter
-
-Votre choix ?
-Voyage Validé
-
-Application cliente Javacard
-----------------------------
-
-1 - Recharger le compteur
-2 - Decrementer le compteur
-3 - Interroger le compteur
-4 - Deblocage PIN
-5 - Controle
-6 - Quitter
-
-Votre choix ?
-Voyage Validé
 
 Application cliente Javacard
 ----------------------------

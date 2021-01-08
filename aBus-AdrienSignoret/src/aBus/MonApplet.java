@@ -63,8 +63,11 @@ public class MonApplet extends Applet {
 
 	private MonApplet() {
 		balance = 0;
-		day = month = line = 0;
-		year = time = 0;
+		day = 1;
+		month = 12;
+		line = 0;
+		year = 2020;
+		time = 23*60+59;
 		direction = false;
 		PIN = new OwnerPIN(PIN_LIMIT, PIN_SIZE);
 		byte [] codePIN = {1, 2, 3, 4};
@@ -75,11 +78,11 @@ public class MonApplet extends Applet {
 		lifeCycleState = LCS_USE;
 	}
 
-	public int getMinutesLastUse(short year, byte mounth, byte day, short time){
-		return (int) ((((year-this.year)*12+(short)(mounth-this.month))*31+(short)(day-this.day))*1440+(time-this.time));
+	public short getMinutesLastUse(short year, byte mounth, byte day, short time){
+		return (short) ((((year-this.year)*12+(short)(mounth-this.month))*31+(short)(day-this.day))*1440+(time-this.time));
 	}
 
-	public int validationVoyage(byte line, boolean direction, short year, short time, byte mounth, byte day){
+	public short validationVoyage(byte line, boolean direction, short year, short time, byte mounth, byte day){
 		if(lifeCycleState == LCS_BLOCKED) {
 			return -2;
 		}
@@ -95,7 +98,7 @@ public class MonApplet extends Applet {
 				if(lastTime>=0){
 					this.line = line;
 					this.direction = direction;
-					return (VALID_DURATION - lastTime);
+					return (short)(VALID_DURATION - lastTime);
 				}
 				else{
 					if(balance < 1){
@@ -210,7 +213,7 @@ public class MonApplet extends Applet {
 		else{
 			if(PIN.getTriesRemaining() == 0){
 				lifeCycleState = LCS_BLOCKED;
-				return -15;
+				return -14;
 			}
 			return -1;
 		}
@@ -247,10 +250,17 @@ public class MonApplet extends Applet {
 
 		switch (buffer[ISO7816.OFFSET_INS]) {
 			case INS_RECHARGER_COMPTEUR:    
-				byte [] codePIN = {1,2,3,4};
-				byte resRec = rechargement((byte)5,codePIN);
+				byte [] codePIN = new byte[4];
+				apdu.setIncomingAndReceive();
+				 byte rechargeAmount = buffer[ISO7816.OFFSET_CDATA+ISO7816.OFFSET_LC];
+				 for(int i = 0; i< 4;i++)
+					 codePIN[i] = buffer[ISO7816.OFFSET_CDATA+i];
+				byte resRec = rechargement(rechargeAmount,codePIN);
 				if(resRec<0){
 					switch(resRec){
+						case -1: 
+							resRec = SW_ERROR_CODE;
+							break;
 						case -2: 
 							resRec = SW_ERROR_BLOCKED;
 							break;
@@ -263,11 +273,11 @@ public class MonApplet extends Applet {
 						case -12:
 							resRec = SW_ERROR_AMOUNT_MAX;
 							break;
-						case -13:
-							resRec= SW_ERROR_BALANCE_MAX;
+						case -13: 
+							resRec = SW_ERROR_BALANCE_MAX;
 							break;
 						case -14:
-							resRec =SW_ERROR_CODE_BLOCKED;
+							resRec = SW_ERROR_CODE_BLOCKED;
 							break;
 						default:
 							resRec =  SW_ERROR_DEFAULT;
@@ -278,24 +288,29 @@ public class MonApplet extends Applet {
 				break;
 			case INS_DECREMENTER_COMPTEUR:    
 				apdu.setIncomingAndReceive();
-				boolean direction = buffer[1]==1;
-				int resDec = validationVoyage(buffer[0],direction,(short)buffer[2],(short)buffer[3],buffer[4],buffer[5]);
+				boolean direction = buffer[ISO7816.OFFSET_CDATA+1]==1;
+				byte line = buffer[ISO7816.OFFSET_CDATA];
+				short year = (short)(buffer[ISO7816.OFFSET_CDATA+3] << 8 | (255 & buffer[ISO7816.OFFSET_CDATA+2]));
+				short time = (short)(buffer[ISO7816.OFFSET_CDATA+5] << 8 | (255 & buffer[ISO7816.OFFSET_CDATA+4]));
+				byte mounth = buffer[ISO7816.OFFSET_CDATA+6];
+				byte day = buffer[ISO7816.OFFSET_CDATA+7];
+				int resDec = validationVoyage(line,direction,year,time,mounth,day);
 				short retour = 0;
 				if(resDec<0){
 					switch(resDec){
-					case -2: 
-						retour = SW_ERROR_BLOCKED;
-						break;
-					case -3:
-						retour = SW_ERROR_DEAD;
-						break;
-					case -21:
-						retour = SW_ERROR_BALANCE_NEG;
-						break;
-					default:
-						retour =  SW_ERROR_DEFAULT;
-						break;
-				}
+						case -2: 
+							retour = SW_ERROR_BLOCKED;
+							break;
+						case -3:
+							retour = SW_ERROR_DEAD;
+							break;
+						case -21:
+							retour = SW_ERROR_BALANCE_NEG;
+							break;
+						default:
+							retour =  SW_ERROR_DEFAULT;
+							break;
+					}
 					ISOException.throwIt(retour);
 				}
 				else{
@@ -314,32 +329,39 @@ public class MonApplet extends Applet {
 				apdu.setOutgoingAndSend((short)  0, (  short)  1);
 				break;
 			case INS_DEBLOCAGE_PIN:
-				byte [] codePUK = {1,2,3,4,5,6,7,8};
+				byte [] codePUK = new byte[8];
+				apdu.setIncomingAndReceive();
+				for(int i = 0; i< 8;i++)
+					 codePUK[i] = buffer[ISO7816.OFFSET_CDATA+i];
 				byte resDeb = deblocage(codePUK);
 				if(resDeb<0){
 					switch(resDeb){
-					case -1: 
-						resDeb = SW_ERROR_CODE;
-						break;
-					case -4: 
-						resDeb = SW_ERROR_USE;
-						break;
-					case -3:
-						resDeb = SW_ERROR_DEAD;
-						break;
-					case -41:
-						resDeb = SW_ERROR_CODE_DEAD;
-						break;
-					default:
-						resDeb =  SW_ERROR_DEFAULT;
-						break;
-				}
+						case -1: 
+							resDeb = SW_ERROR_CODE;
+							break;
+						case -4: 
+							resDeb = SW_ERROR_USE;
+							break;
+						case -3:
+							resDeb = SW_ERROR_DEAD;
+							break;
+						case -41:
+							resDeb = SW_ERROR_CODE_DEAD;
+							break;
+						default:
+							resDeb =  SW_ERROR_DEFAULT;
+							break;
+					}
 					ISOException.throwIt(resDeb);
 				}
 				break;
 			case INS_CONTROL:
 				apdu.setIncomingAndReceive();
-				int resCon = control((short)1,(short)1,(byte)0x01,(byte)0x01);
+				short yearCon = (short)(buffer[ISO7816.OFFSET_CDATA+1] << 8 | (255 & buffer[ISO7816.OFFSET_CDATA]));
+				short timeCon = (short)(buffer[ISO7816.OFFSET_CDATA+3] << 8 | (255 & buffer[ISO7816.OFFSET_CDATA+2]));
+				byte mounthCon = buffer[ISO7816.OFFSET_CDATA+4];
+				byte dayCon = buffer[ISO7816.OFFSET_CDATA+5];
+				int resCon = control(yearCon,timeCon,mounthCon,dayCon);
 				short retCon=0;
 				if(resCon<0){
 					switch(resCon){
@@ -350,7 +372,7 @@ public class MonApplet extends Applet {
 							retCon = SW_ERROR_DEAD;
 							break; 
 						case -5:
-							retour = SW_ERROR_TIME_OVERFLOW;
+							retCon = SW_ERROR_TIME_OVERFLOW;
 							break;
 						default:
 							retCon =  SW_ERROR_DEFAULT;
@@ -360,9 +382,10 @@ public class MonApplet extends Applet {
 				}
 				else{
 					if(resCon != 0){
-						buffer[0]  = (byte)resCon;
+						buffer[0]= (byte)(resCon & 0xff);
+						buffer[1]= (byte)((resCon >> 8 )&0xff);
 						retCon = SW_ERROR_CONTROL_NEG;
-						apdu.setOutgoingAndSend((short)  0, (  short)  1);
+						apdu.setOutgoingAndSend((short)  0, (  short)  2);
 						ISOException.throwIt(retCon);
 					}
 				}
